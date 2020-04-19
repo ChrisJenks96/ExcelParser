@@ -4,6 +4,7 @@
 int main(int argc, char** argv)
 {
 	XLSX xlsxReader;
-	xlsxReader.Load("C:\\Users\\Chris\\Desktop\\EXCELBOOKTEST.xlsx");
+	xlsxReader.Load("C:\\Users\\Chris\\Desktop\\EXCELBOOKTEST.xlsx", true);
+	xlsxReader.Destroy();
 	return 0;
 }
