@@ -9,6 +9,7 @@
 
 //uncompressing xml files
 #include <zlib.h>
+#include <zip.h>
 
 //Note: Currently testing on MS Office 2010
 
@@ -18,7 +19,7 @@
 typedef struct ZIP_HEADER
 {
 	//50 4B 03 04 Header in XLSX (ZIP magic header)
-	char magic[4];
+	char magic[4]; // 0
 	uint16_t version;
 	//general purpose bit flag
 	uint16_t gpbFlag;
@@ -38,7 +39,6 @@ typedef struct XLSX_HEADER
 	ZIP_HEADER zipHeader;
 	//get size from ZIP_HEADER fileNameLength
 	char* filename;
-	char* compressedData;
 } XLSX_HEADER;
 #pragma pack(pop)
 
