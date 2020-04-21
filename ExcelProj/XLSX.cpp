@@ -6,6 +6,9 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 	if (in)
 	{
 		this->numWorksheets = numWorksheets;
+		//we need to log and save the names of the worksheet names for loading them later
+		int currWorksheetName = 0;
+		worksheetNames = new char*[numWorksheets];//(char**)malloc(numWorksheets);
 		int currWorksheet = -1;
 		XLSX_DATA tmpZip;
 		//used if we dump the files using 7-ZIP
@@ -14,13 +17,18 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		while (!feof(in) && currWorksheet < numWorksheets)
 		{
 			fread(&tmpZip, sizeof(ZIP_HEADER), 1, in);
-			tmpZip.filename = (char*)malloc(tmpZip.zipHeader.fileNameLength + 1);
+			tmpZip.filename = new char[tmpZip.zipHeader.fileNameLength + 1];//(char*)malloc(tmpZip.zipHeader.fileNameLength + 1);
 			fread(&tmpZip.filename[0], tmpZip.zipHeader.fileNameLength, 1, in);
 			//add null terminator to our string to remove garbage
 			tmpZip.filename[tmpZip.zipHeader.fileNameLength] = 0;
 
 			bool xmlFound = false;
 			if (strstr(tmpZip.filename, "xl/worksheets/") != NULL) {
+				//alloc space for the name but remove the "xl/worksheets/" (14 characters)
+				worksheetNames[currWorksheetName] = new char[(tmpZip.zipHeader.fileNameLength - 14) + 1];//(char*)malloc((tmpZip.zipHeader.fileNameLength - 14) + 1);
+				memcpy(worksheetNames[currWorksheetName], &tmpZip.filename[14], (tmpZip.zipHeader.fileNameLength - 14));
+				worksheetNames[currWorksheetName][tmpZip.zipHeader.fileNameLength - 14] = 0;
+				currWorksheetName++;
 				xmlFound = true;
 			}
 
@@ -33,7 +41,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				//get the size of our nested zip inside the XLSX file
 				int dataZipSize = tmpZip.zipHeader.compressedSize + tmpZip.zipHeader.extraFieldLength;
 				//create and read the whole zip file to the buffer
-				char* buffer = (char*)malloc(dataZipSize);
+				char* buffer = new char[dataZipSize];//(char*)malloc(dataZipSize);
 				fread(&buffer[0], dataZipSize, 1, in);
 				//write the buffer externally for 7-zip to reference
 				FILE* out = fopen(tmpZip.filename, "wb");
@@ -61,7 +69,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				else
 					printf("dir error: %s does not exist\n", tmpZip.filename);
 
-				free(buffer);
+				delete buffer;//free(buffer);
 			}
 
 			//if this isn't the file we're looking for, keep searching
@@ -71,7 +79,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				fseek(in, tmpZip.zipHeader.compressedSize + tmpZip.zipHeader.extraFieldLength, SEEK_CUR);
 			}
 
-			free(tmpZip.filename);
+			delete tmpZip.filename;//free(tmpZip.filename);
 		}
 
 		fclose(in);
@@ -83,5 +91,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 
 void XLSX::Destroy()
 {
-
+	for (int i = 0; i < numWorksheets; i++){
+		delete worksheetNames[i];//free(worksheetNames[i]);
+	}
 }

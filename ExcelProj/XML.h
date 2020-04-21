@@ -25,12 +25,27 @@ class XMLSharedString : public XML
 		char** sharedStr;
 };
 
+typedef struct XMLWORKSHEET_CELL
+{
+	//if the cell t="s" then it references a string constant via index
+	bool strRefFlag;
+	//e.g. "A1"
+	char* name;
+	//index to constant string or actual value
+	int value; 
+} XMLWORKSHEET_CELL;
+
 class XMLWorksheet : public XML
 {
 	public:
-		bool Load();
+		bool Load() { return false; }
+		bool Load(const char* fn);
+		bool isEmpty() { return isEmptyFlag; }
 		void Destroy();
 	private:
+		bool isEmptyFlag;
+		int numCells;
+		XMLWORKSHEET_CELL* cells;
 };
 
 

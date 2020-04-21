@@ -2,19 +2,35 @@
 #include "XLSX.h"
 #include "XML.h"
 
-//two main important types of files are:
-	//-sheets which contain raw data and string references
-	//-sharedStrings which contain the raw strings which the sheets reference via indexes
+//note: new allocates memory and calls constructor for object initialization
 
 int main(int argc, char** argv)
 {
 	XLSX xlsxReader;
 	XMLSharedString xmlSSReader;
-	XMLWorksheet xmlWSReader;
-	xlsxReader.Load("C:\\Users\\Chris\\Desktop\\EXCELBOOKTEST.xlsx", 3);
-	xlsxReader.Destroy();
+	int numWorksheets = 3;
+	XMLWorksheet* xmlWSReader = new XMLWorksheet[numWorksheets];
+
 	//once the xlsx reader has uncompressed all the files, they will be on the root, so we know the file loc
-	xmlSSReader.Load();
+	if (xlsxReader.Load("C:\\Users\\Chris\\Desktop\\EXCELBOOKTEST.xlsx", numWorksheets)){
+		//load in the shared strings
+		if (xmlSSReader.Load())
+		{	
+			//load in each worksheet
+			for (int i = 0; i < numWorksheets; i++){
+				xmlWSReader[i].Load((const char*)xlsxReader.GetWorksheetName(i));
+			}
+		}
+	}
+
+	for (int i = 0; i < numWorksheets; i++) {
+		if (!xmlWSReader[i].isEmpty()) {
+			xmlWSReader[i].Destroy();
+		}
+	}
+
+	delete[] xmlWSReader;
 	xmlSSReader.Destroy();
+	xlsxReader.Destroy();
 	return 0;
 }
