@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-//uncompressing xml files
-#include <zlib.h>
-#include <zip.h>
-
 //Note: Currently testing on MS Office 2010
 
 //Pragma pack because our 30 byte structure gets realigned to 32 bytes!!
@@ -34,23 +30,23 @@ typedef struct ZIP_HEADER
 	uint16_t extraFieldLength;
 } ZIP_HEADER;
 
-typedef struct XLSX_HEADER
+typedef struct XLSX_DATA
 {
 	ZIP_HEADER zipHeader;
 	//get size from ZIP_HEADER fileNameLength
 	char* filename;
-} XLSX_HEADER;
+} XLSX_DATA;
 #pragma pack(pop)
 
 class XLSX
 {
 	public:
 		XLSX() {}
-		bool Load(const char* fn, bool dumpFiles);
+		bool Load(const char* fn, int numWorksheets);
 		void Destroy();
 		~XLSX() {}
 	private:
-		XLSX_HEADER header;
+		int numWorksheets;
 };
 
 #endif
