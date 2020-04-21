@@ -21,9 +21,15 @@
     <ClCompile Include="XLSX.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="XML.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="XLSX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="XML.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

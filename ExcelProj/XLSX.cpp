@@ -6,11 +6,12 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 	if (in)
 	{
 		this->numWorksheets = numWorksheets;
+		int currWorksheet = -1;
 		XLSX_DATA tmpZip;
 		//used if we dump the files using 7-ZIP
 		int systemRet;
 
-		while (!feof(in))
+		while (!feof(in) && currWorksheet < numWorksheets)
 		{
 			fread(&tmpZip, sizeof(ZIP_HEADER), 1, in);
 			tmpZip.filename = (char*)malloc(tmpZip.zipHeader.fileNameLength + 1);
@@ -34,11 +35,6 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				//create and read the whole zip file to the buffer
 				char* buffer = (char*)malloc(dataZipSize);
 				fread(&buffer[0], dataZipSize, 1, in);
-				//change the extension from XML to ZIP (precautionary for 7-ZIP)
-				//int headerFilenameLength = strlen(tmpZip.filename);
-				//tmpZip.filename[headerFilenameLength - 3] = 'z';
-				//tmpZip.filename[headerFilenameLength - 2] = 'i';
-				//tmpZip.filename[headerFilenameLength - 1] = 'p';
 				//write the buffer externally for 7-zip to reference
 				FILE* out = fopen(tmpZip.filename, "wb");
 				if (out)
@@ -58,24 +54,28 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 
 					//remove the original compressed file
 					remove(tmpZip.filename);
+					
+					currWorksheet++;
 				}
 
 				else
 					printf("dir error: %s does not exist\n", tmpZip.filename);
+
 				free(buffer);
 			}
 
 			//if this isn't the file we're looking for, keep searching
 			else
 			{
-				free(tmpZip.filename);
 				//forward the seek pointer past the data (we've done the filename)
 				fseek(in, tmpZip.zipHeader.compressedSize + tmpZip.zipHeader.extraFieldLength, SEEK_CUR);
 			}
+
+			free(tmpZip.filename);
 		}
 
 		fclose(in);
-		return (systemRet < 0) ? false : true;
+		return true;
 	}
 
 	return false;

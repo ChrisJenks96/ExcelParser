@@ -44,6 +44,7 @@ class XLSX
 		XLSX() {}
 		bool Load(const char* fn, int numWorksheets);
 		void Destroy();
+		int GetNumberWorksheets() { return numWorksheets; }
 		~XLSX() {}
 	private:
 		int numWorksheets;
