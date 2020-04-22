@@ -15,6 +15,11 @@ class XML
 	private:
 };
 
+//the length of a string before we give up searching for it's end (probably doesn't have one...)
+#define XMLSHAREDSTRING_MAXLENGTH 32
+//the length of a worksheet cell value (normally floating point numbers/large strings get close to this max)
+#define XMLWORKSHEETCELL_MAXLENGTH 32
+
 class XMLSharedString : public XML
 {
 	public:

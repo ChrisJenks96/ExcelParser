@@ -14,45 +14,48 @@ bool XMLSharedString::Load()
 		fread(&buffer[0], fileSize, 1, in);
 
 		//find the number of strings in the XML file
-		//+7 is the offset to get to the start of the number
-		char* countOffset = strstr(buffer, "count=") + 7;
+		//+13 is the offset to get to the start of the number
+		char* sharedStrDataOffset = strstr(buffer, "uniqueCount=") + 13;
 		int countEnd = 0;
 		//find the remaining quotation and that will be our offset
-		while (countOffset[countEnd] != '"'){
+		while (sharedStrDataOffset[countEnd] != '"'){
 			countEnd++;
 		}
 
 		//convert the string to num
-		memcpy(numStr, countOffset, countEnd);
-		numSharedStr = atoi(numStr) - 1;
+		memcpy(numStr, sharedStrDataOffset, countEnd);
+		numSharedStr = atoi(numStr);
 		//the number of strings to load
 		sharedStr = new char*[numSharedStr];//(char**)malloc(numSharedStr);
 
-		//not used anymore
-		countOffset = NULL;
-
 		//offset to the start of the shared string data
-		char* sharedStrDataOffset = strstr(buffer, "<si><t>") + 7;
+		sharedStrDataOffset = strstr(buffer, "<si><t>") + 7;
 		countEnd = 0;
 		for (int i = 0; i < numSharedStr; i++)
 		{
 			//find the end of the shared string by finding the XML syntax '<'
 			while (sharedStrDataOffset[countEnd] != '<') {
 				countEnd++;
+				if (countEnd > XMLSHAREDSTRING_MAXLENGTH)
+					break;
 			}
 
 			//allocate the new string size and fill it up
-			sharedStr[i] = new char[countEnd + 1];//(char*)malloc(countEnd+1);
-			memcpy(sharedStr[i], sharedStrDataOffset, countEnd);
-			//add null terminator to the string
-			sharedStr[i][countEnd] = 0;
+			if (countEnd < XMLSHAREDSTRING_MAXLENGTH) {
+				sharedStr[i] = new char[countEnd + 1];//(char*)malloc(countEnd+1);
+				memcpy(sharedStr[i], sharedStrDataOffset, countEnd);
+				//add null terminator to the string
+				sharedStr[i][countEnd] = 0;
+			}
+
+			//if the data has been skewed and is out of range, nullify it
+			else
+				sharedStr[i] = NULL;
+			
 			//offset for the next data
 			sharedStrDataOffset += (16 + countEnd);
 			countEnd = 0;
 		}
-
-		//not used anymore
-		sharedStrDataOffset = NULL;
 
 		delete buffer;//free(buffer);
 		fclose(in);
@@ -98,6 +101,8 @@ bool XMLWorksheet::Load(const char* fn)
 
 		if (numCells > 0)
 		{
+			//we count 1 too many
+			numCells -= 1;
 			isEmptyFlag = false;
 			//faster than reallocing every loop/allocating a big number then resizing at the end (excel data size is too variable)
 			int currCell = 0;
@@ -148,7 +153,7 @@ bool XMLWorksheet::Load(const char* fn)
 						countEnd++;
 					}
 
-					char numStr[16];
+					char numStr[XMLWORKSHEETCELL_MAXLENGTH];
 					memcpy(numStr, bufferOffset, countEnd);
 					numStr[countEnd] = 0;
 					cells[currCell].value = atoi(numStr);
