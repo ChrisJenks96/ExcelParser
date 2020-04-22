@@ -153,10 +153,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Time.cpp" />
     <ClCompile Include="XLSX.cpp" />
     <ClCompile Include="XML.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Time.h" />
     <ClInclude Include="XLSX.h" />
     <ClInclude Include="XML.h" />
   </ItemGroup>
