@@ -46,6 +46,7 @@ class XMLWorksheet : public XML
 		bool Load() { return false; }
 		bool Load(const char* fn);
 		bool isEmpty() { return isEmptyFlag; }
+		int GetNumCells() { return numCells; }
 		void Destroy();
 	private:
 		bool isEmptyFlag;

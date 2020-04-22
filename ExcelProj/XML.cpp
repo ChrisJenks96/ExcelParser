@@ -105,69 +105,87 @@ bool XMLWorksheet::Load(const char* fn)
 			numCells -= 1;
 			isEmptyFlag = false;
 			//faster than reallocing every loop/allocating a big number then resizing at the end (excel data size is too variable)
-			int currCell = 0;
+			int currCell = -1;
 			cells = new XMLWORKSHEET_CELL[numCells];//(XMLWORKSHEET_CELL*)malloc(sizeof(XMLWORKSHEET_CELL) * numCells);
 
 			//find the actual cell ID and value
 			bufferOffset = buffer;
 			int countEnd = 0;
-			for (int i = 0; i < numCells; i++)
+			
+			bufferOffset = strstr(bufferOffset, "c r");
+			//while we havent hit the next column row data segment, process this current one
+			while (currCell != (numCells-1))
 			{
-				bufferOffset = strstr(bufferOffset, "c r");
-				if (bufferOffset != NULL) {
-					//skip past XML formatting data
-					bufferOffset += 5;
-					//find the end of the shared string by finding the XML syntax '<'
-					while (bufferOffset[countEnd] != '>' && bufferOffset[countEnd] != 't') {
-						countEnd++;
+				int dataEnd = 0;
+				//the column row data
+				if (bufferOffset[countEnd] == 'c' && bufferOffset[countEnd+1] == ' ' && bufferOffset[countEnd+2] == 'r')
+				{
+					//we now move onto the next cell as we've found some c/r data
+					currCell += 1;
+					//offset to get to the data
+					countEnd += 5;
+					//NOTE: quotation marks arent being picked up4
+					//find the next ' ' / greater than for the end of the data
+					while (bufferOffset[countEnd + dataEnd] != ' ' && bufferOffset[countEnd + dataEnd] != '>') {
+						dataEnd++;
 					}
 
-					//we go 1/2 characters further to find whether the buffer has a 't' (string constant reference id)
-					if (bufferOffset[countEnd] == '>') {
-						cells[currCell].strRefFlag = false;
-						countEnd -= 1;
-					}
-
-					else if (bufferOffset[countEnd] == 't') {
-						cells[currCell].strRefFlag = true;
-						countEnd -= 2;
-					}
+					//remove extra formatting after the data
+					dataEnd -= 1;
 
 					//get the cell id and zero it off
-					cells[currCell].name = new char[countEnd + 1];//(char*)malloc(countEnd + 1);
-					memcpy(cells[currCell].name, bufferOffset, countEnd);
-					cells[currCell].name[countEnd] = 0;
+					cells[currCell].name = new char[dataEnd + 1];
+					memcpy(cells[currCell].name, &bufferOffset[countEnd], dataEnd);
+					cells[currCell].name[dataEnd] = 0;
 
-					//find the value inside the cell
-					bufferOffset += countEnd;
-					while (*bufferOffset != 'v') {
-						bufferOffset++;
-					}
+					//skip over the data we've just processed
+					countEnd += dataEnd;
 
-					//offset +2 to get to the start of the data
-					bufferOffset += 2;
+					//set this by default, as when we hit 't'/'v' we set it to true
+					cells[currCell].strRefFlag = false;
+					cells[currCell].value = -1;
+				}
 
-					//find the end of the data we're searching for
-					countEnd = 0;
-					while (bufferOffset[countEnd] != '<') {
-						countEnd++;
+				else if (bufferOffset[countEnd] == 's' && bufferOffset[countEnd+1] == '=')
+				{
+					//offset to get to the data
+					countEnd += 6;
+				}
+
+				//whether the cell references a shared string
+				else if (bufferOffset[countEnd] == 't' && bufferOffset[countEnd+1] == '=')
+				{
+					cells[currCell].strRefFlag = true;
+				}
+
+				//the cell value
+				else if (bufferOffset[countEnd] == '<' && bufferOffset[countEnd+1] == 'v' && bufferOffset[countEnd+2] == '>')
+				{
+					//offset to get to the data
+					countEnd += 3;
+
+					//find the end of the cell value
+					while (bufferOffset[countEnd + dataEnd] != '<') {
+						dataEnd++;
 					}
 
 					char numStr[XMLWORKSHEETCELL_MAXLENGTH];
-					memcpy(numStr, bufferOffset, countEnd);
-					numStr[countEnd] = 0;
+					memcpy(numStr, &bufferOffset[countEnd], dataEnd);
+					numStr[dataEnd] = 0;
 					cells[currCell].value = atoi(numStr);
 
-					//increment to the next cell
-					currCell += 1;
+					//skip over the data we've just processed
+					countEnd += dataEnd;
 				}
+
+				countEnd++;
 			}
 		}
 
 		else
 			isEmptyFlag = true;
 
-		delete buffer;//free(buffer);
+		delete buffer;
 		fclose(in);
 		return true;
 	}

@@ -25,9 +25,29 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 			bool xmlFound = false;
 			if (strstr(tmpZip.filename, "xl/worksheets/") != NULL) {
 				//alloc space for the name but remove the "xl/worksheets/" (14 characters)
-				worksheetNames[currWorksheetName] = new char[(tmpZip.zipHeader.fileNameLength - 14) + 1];//(char*)malloc((tmpZip.zipHeader.fileNameLength - 14) + 1);
-				memcpy(worksheetNames[currWorksheetName], &tmpZip.filename[14], (tmpZip.zipHeader.fileNameLength - 14));
-				worksheetNames[currWorksheetName][tmpZip.zipHeader.fileNameLength - 14] = 0;
+				int filenameNewLength = tmpZip.zipHeader.fileNameLength;
+				//this accounts for filenames with directory paths, work backwards to find the last subdirectory slash
+				while (tmpZip.filename[filenameNewLength] != '/'){
+					filenameNewLength--;
+				}
+
+				//add 1 as we dont want to include the '/' we have been searching for
+				filenameNewLength += 1;
+
+				//find out if theres another extension after xml
+				char* xmlExtensionCheck = strstr(tmpZip.filename, "xml");
+				int xmlExtensionCheckSize = strlen(xmlExtensionCheck);
+				//if its not equal to 3 cxharacters (xml) then we need to cut it down
+				if (xmlExtensionCheckSize != 3) {
+					xmlExtensionCheckSize = (xmlExtensionCheckSize - 3);
+				}
+				//no need for an offset if it's already got the 3 character xml extension
+				else
+					xmlExtensionCheckSize = 0;
+
+				worksheetNames[currWorksheetName] = new char[(tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)) + 1];//(char*)malloc((tmpZip.zipHeader.fileNameLength - 14) + 1);
+				memcpy(worksheetNames[currWorksheetName], &tmpZip.filename[filenameNewLength], (tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)));
+				worksheetNames[currWorksheetName][tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)] = 0;
 				currWorksheetName++;
 				xmlFound = true;
 			}
