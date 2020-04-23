@@ -149,7 +149,7 @@ bool XMLWorksheet::Load(const char* fn)
 				else if (bufferOffset[countEnd] == 's' && bufferOffset[countEnd+1] == '=')
 				{
 					//offset to get to the data
-					countEnd += 6;
+					//countEnd += 6;
 				}
 
 				//whether the cell references a shared string

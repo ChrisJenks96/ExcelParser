@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <malloc.h>
 
+#include <unzip.h>
+
 //Note: Currently testing on MS Office 2010
 
 //Pragma pack because our 30 byte structure gets realigned to 32 bytes!!

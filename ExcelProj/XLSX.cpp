@@ -8,100 +8,152 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		this->numWorksheets = numWorksheets;
 		//we need to log and save the names of the worksheet names for loading them later
 		int currWorksheetName = 0;
-		worksheetNames = new char*[numWorksheets];//(char**)malloc(numWorksheets);
+		worksheetNames = new char*[numWorksheets];
 		int currWorksheet = -1;
 		XLSX_DATA tmpZip;
-		//used if we dump the files using 7-ZIP
-		int systemRet;
+		bool xmlFound = false;
 
-		while (!feof(in) && currWorksheet < numWorksheets)
+		//NEW MINIZIP/UNZIP METHOD
+		// Open the zip file
+		unzFile zipfile = unzOpen(fn);
+		if (zipfile == NULL){
+			printf("%s: not found\n");
+			return -1;
+		}
+
+		// Get info about the zip file
+		unz_global_info global_info;
+		if (unzGetGlobalInfo(zipfile, &global_info) != UNZ_OK)
 		{
-			fread(&tmpZip, sizeof(ZIP_HEADER), 1, in);
-			tmpZip.filename = new char[tmpZip.zipHeader.fileNameLength + 1];//(char*)malloc(tmpZip.zipHeader.fileNameLength + 1);
-			fread(&tmpZip.filename[0], tmpZip.zipHeader.fileNameLength, 1, in);
-			//add null terminator to our string to remove garbage
-			tmpZip.filename[tmpZip.zipHeader.fileNameLength] = 0;
+			printf("could not read file global info\n");
+			unzClose(zipfile);
+			return -1;
+		}
 
-			bool xmlFound = false;
-			if (strstr(tmpZip.filename, "xl/worksheets/") != NULL) {
-				//alloc space for the name but remove the "xl/worksheets/" (14 characters)
-				int filenameNewLength = tmpZip.zipHeader.fileNameLength;
-				//this accounts for filenames with directory paths, work backwards to find the last subdirectory slash
-				while (tmpZip.filename[filenameNewLength] != '/'){
-					filenameNewLength--;
+		// Buffer to hold data read from the zip file.
+		char read_buffer[8192];
+		// Loop to extract all files
+		unsigned long i;
+		for (i = 0; i < global_info.number_entry; ++i)
+		{
+			xmlFound = false;
+			// Get info about current file.
+			unz_file_info file_info;
+			char filename[64];
+			//our custom filename accessor
+			char* actualFilenameOffset;
+			if (unzGetCurrentFileInfo(zipfile, &file_info, 
+				filename, 512, NULL, 0, NULL, 0) == UNZ_OK)
+			{
+				actualFilenameOffset = strstr(filename, "xl/sharedStrings.xml");
+				if (actualFilenameOffset != NULL){
+					//offset past the 'xl/'
+					actualFilenameOffset += 3;
+					xmlFound = true;
 				}
 
-				//add 1 as we dont want to include the '/' we have been searching for
-				filenameNewLength += 1;
+				if (!xmlFound) {
+					actualFilenameOffset = strstr(filename, "xl/worksheets/_rels/");
+					if (actualFilenameOffset != NULL) {
+						//offset the data offset pointer, so we get to the worksheet name
+						actualFilenameOffset += 20;
+						//remove the 'rels' on the end if its there
+						int len = strlen(actualFilenameOffset)-1;
+						//if the last element in filename isn't l for xml
+						while (actualFilenameOffset[len-1] != 'm' || actualFilenameOffset[len] != 'l'){
+							actualFilenameOffset[len--] = 0;
+						}
 
-				//find out if theres another extension after xml
-				char* xmlExtensionCheck = strstr(tmpZip.filename, "xml");
-				int xmlExtensionCheckSize = strlen(xmlExtensionCheck);
-				//if its not equal to 3 cxharacters (xml) then we need to cut it down
-				if (xmlExtensionCheckSize != 3) {
-					xmlExtensionCheckSize = (xmlExtensionCheckSize - 3);
+						currWorksheet++;
+						xmlFound = true;
+
+						//add the worksheet name to this class for the worksheet reader
+						len = strlen(actualFilenameOffset);
+						worksheetNames[currWorksheet] = new char[len+1];
+						memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
+						worksheetNames[currWorksheet][len] = 0;
+					}
 				}
-				//no need for an offset if it's already got the 3 character xml extension
-				else
-					xmlExtensionCheckSize = 0;
 
-				worksheetNames[currWorksheetName] = new char[(tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)) + 1];//(char*)malloc((tmpZip.zipHeader.fileNameLength - 14) + 1);
-				memcpy(worksheetNames[currWorksheetName], &tmpZip.filename[filenameNewLength], (tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)));
-				worksheetNames[currWorksheetName][tmpZip.zipHeader.fileNameLength - (filenameNewLength + xmlExtensionCheckSize)] = 0;
-				currWorksheetName++;
-				xmlFound = true;
+				if (!xmlFound) {
+					actualFilenameOffset = strstr(filename, "xl/worksheets/");
+					if (actualFilenameOffset != NULL) {
+						//offset the data offset pointer, so we get to the worksheet name
+						actualFilenameOffset += 14;
+						//remove the 'rels' on the end if its there
+						int len = strlen(actualFilenameOffset) - 1;
+						//if the last element in filename isn't l for xml
+						while (actualFilenameOffset[len - 1] != 'm' || actualFilenameOffset[len] != 'l') {
+							actualFilenameOffset[len--] = 0;
+						}
+
+						currWorksheet++;
+						xmlFound = true;
+
+						//add the worksheet name to this class for the worksheet reader
+						len = strlen(actualFilenameOffset);
+						worksheetNames[currWorksheet] = new char[len+1];
+						memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
+						worksheetNames[currWorksheet][len] = 0;
+					}
+				}
 			}
 
-			if (strcmp(tmpZip.filename, "xl/sharedStrings.xml") == 0) {
-				xmlFound = true;
+			if (currWorksheet >= numWorksheets) {
+				break;
 			}
 
 			if (xmlFound)
 			{
-				//get the size of our nested zip inside the XLSX file
-				int dataZipSize = tmpZip.zipHeader.compressedSize + tmpZip.zipHeader.extraFieldLength;
-				//create and read the whole zip file to the buffer
-				char* buffer = new char[dataZipSize];//(char*)malloc(dataZipSize);
-				fread(&buffer[0], dataZipSize, 1, in);
-				//write the buffer externally for 7-zip to reference
-				FILE* out = fopen(tmpZip.filename, "wb");
-				if (out)
+				if (unzOpenCurrentFile(zipfile) != UNZ_OK)
 				{
-					//write the tmp zip header information to the file first
-					fwrite(&tmpZip, sizeof(ZIP_HEADER), 1, out);
-					fwrite(&tmpZip.filename[0], tmpZip.zipHeader.fileNameLength, 1, out);
-					//write the remaining compressed data
-					fwrite(&buffer[0], dataZipSize, 1, out);
-					fclose(out);
-					//uncompress the zip file, uncompressing the XML file inside of it
-					char zipExtractCommand[64];
-					//Based on the fact we have 7-Zip installed (64 bit version on windows)
-					strcpy(&zipExtractCommand[0], "C:\\PROGRA~1\\7-ZIP\\7Z.EXE e ");
-					strcpy(&zipExtractCommand[strlen(zipExtractCommand)], tmpZip.filename);
-					systemRet = system(zipExtractCommand);
-
-					//remove the original compressed file
-					remove(tmpZip.filename);
-					
-					currWorksheet++;
+					printf("could not open file\n");
+					unzClose(zipfile);
+					return -1;
 				}
 
-				else
-					printf("dir error: %s does not exist\n", tmpZip.filename);
+				// Open a file to write out the data.
+				FILE* out = fopen(actualFilenameOffset, "wb");
+				if (out == NULL)
+				{
+					printf("could not open destination file\n");
+					unzCloseCurrentFile(zipfile);
+					unzClose(zipfile);
+					return -1;
+				}
 
-				delete buffer;//free(buffer);
+				int error = UNZ_OK;
+				do
+				{
+					error = unzReadCurrentFile(zipfile, read_buffer, 8192);
+					if (error < 0){
+						printf("error %d\n", error);
+						unzCloseCurrentFile(zipfile);
+						unzClose(zipfile);
+						return -1;
+					}
+
+					// Write data to file.
+					if (error > 0){
+						fwrite(read_buffer, error, 1, out); // You should check return of fwrite...
+					}
+				} while (error > 0);
+
+				fclose(out);
+				unzCloseCurrentFile(zipfile);
 			}
 
-			//if this isn't the file we're looking for, keep searching
-			else
-			{
-				//forward the seek pointer past the data (we've done the filename)
-				fseek(in, tmpZip.zipHeader.compressedSize + tmpZip.zipHeader.extraFieldLength, SEEK_CUR);
+			//move onto the next element in the xml file
+			if ((i + 1) < global_info.number_entry){
+				if (unzGoToNextFile(zipfile) != UNZ_OK){
+					printf("cound not read next file\n");
+					unzClose(zipfile);
+					return -1;
+				}
 			}
-
-			delete tmpZip.filename;//free(tmpZip.filename);
 		}
 
+		unzClose(zipfile);
 		fclose(in);
 		return true;
 	}
