@@ -53,55 +53,36 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				}
 
 				if (!xmlFound) {
-					actualFilenameOffset = strstr(filename, "xl/worksheets/_rels/");
-					if (actualFilenameOffset != NULL) {
-						//offset the data offset pointer, so we get to the worksheet name
-						actualFilenameOffset += 20;
-						//remove the 'rels' on the end if its there
-						int len = strlen(actualFilenameOffset)-1;
-						//if the last element in filename isn't l for xml
-						while (actualFilenameOffset[len-1] != 'm' || actualFilenameOffset[len] != 'l'){
-							actualFilenameOffset[len--] = 0;
-						}
-
-						currWorksheet++;
-						xmlFound = true;
-
-						//add the worksheet name to this class for the worksheet reader
-						len = strlen(actualFilenameOffset);
-						worksheetNames[currWorksheet] = new char[len+1];
-						memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
-						worksheetNames[currWorksheet][len] = 0;
-					}
-				}
-
-				if (!xmlFound) {
 					actualFilenameOffset = strstr(filename, "xl/worksheets/");
 					if (actualFilenameOffset != NULL) {
-						//offset the data offset pointer, so we get to the worksheet name
-						actualFilenameOffset += 14;
-						//remove the 'rels' on the end if its there
-						int len = strlen(actualFilenameOffset) - 1;
-						//if the last element in filename isn't l for xml
-						while (actualFilenameOffset[len - 1] != 'm' || actualFilenameOffset[len] != 'l') {
-							actualFilenameOffset[len--] = 0;
+						//do not load in the rel information (no data)
+						if (strstr(filename, "_rels/") == NULL)
+						{
+							//offset the data offset pointer, so we get to the worksheet name
+							actualFilenameOffset += 14;
+							//remove the 'rels' on the end if its there
+							int len = strlen(actualFilenameOffset) - 1;
+							//if the last element in filename isn't l for xml
+							while (actualFilenameOffset[len - 1] != 'm' || actualFilenameOffset[len] != 'l') {
+								actualFilenameOffset[len--] = 0;
+							}
+
+							currWorksheet++;
+							xmlFound = true;
+
+							//add the worksheet name to this class for the worksheet reader
+							len = strlen(actualFilenameOffset);
+							worksheetNames[currWorksheet] = new char[len + 1];
+							memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
+							worksheetNames[currWorksheet][len] = 0;
 						}
-
-						currWorksheet++;
-						xmlFound = true;
-
-						//add the worksheet name to this class for the worksheet reader
-						len = strlen(actualFilenameOffset);
-						worksheetNames[currWorksheet] = new char[len+1];
-						memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
-						worksheetNames[currWorksheet][len] = 0;
 					}
 				}
 			}
 
-			if (currWorksheet >= numWorksheets) {
-				break;
-			}
+			//if (currWorksheet >= numWorksheets) {
+				//break;
+			//}
 
 			if (xmlFound)
 			{
