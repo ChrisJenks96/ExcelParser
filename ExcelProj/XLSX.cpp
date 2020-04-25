@@ -10,7 +10,6 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		int currWorksheetName = 0;
 		worksheetNames = new char*[numWorksheets];
 		int currWorksheet = -1;
-		XLSX_DATA tmpZip;
 		bool xmlFound = false;
 
 		//NEW MINIZIP/UNZIP METHOD
@@ -34,12 +33,12 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		char read_buffer[8192];
 		// Loop to extract all files
 		unsigned long i;
+		char filename[64];
 		for (i = 0; i < global_info.number_entry; ++i)
 		{
 			xmlFound = false;
 			// Get info about current file.
 			unz_file_info file_info;
-			char filename[64];
 			//our custom filename accessor
 			char* actualFilenameOffset;
 			if (unzGetCurrentFileInfo(zipfile, &file_info, 
@@ -80,9 +79,10 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				}
 			}
 
-			//if (currWorksheet >= numWorksheets) {
-				//break;
-			//}
+			//break out when we're done
+			if (currWorksheet >= numWorksheets) {
+				break;
+			}
 
 			if (xmlFound)
 			{
@@ -145,6 +145,6 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 void XLSX::Destroy()
 {
 	for (int i = 0; i < numWorksheets; i++){
-		delete worksheetNames[i];//free(worksheetNames[i]);
+		delete worksheetNames[i];
 	}
 }

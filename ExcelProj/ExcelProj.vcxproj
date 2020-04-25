@@ -156,11 +156,11 @@
     <ClCompile Include="XML.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Fast.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="XLSX.h" />
     <ClInclude Include="XML.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

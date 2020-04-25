@@ -1,16 +1,47 @@
 #include "XML.h"
 
+void XMLSharedString::GetSharedStr(int startOffset, int startIndex, int lastIndex)
+{
+	int countEnd = 0;
+	char* sharedStrDataOffset = strstr(&buffer[startOffset], "<si><t>") + 7;
+	for (int i = startIndex; i < lastIndex; i++)
+	{
+		//find the end of the shared string by finding the XML syntax '<'
+		while (sharedStrDataOffset[countEnd] != '<') {
+			countEnd++;
+			if (countEnd > XMLSHAREDSTRING_MAXLENGTH)
+				break;
+		}
+
+		//allocate the new string size and fill it up
+		if (countEnd < XMLSHAREDSTRING_MAXLENGTH) {
+			sharedStr[i] = new char[countEnd + 1];
+			memcpy(sharedStr[i], sharedStrDataOffset, countEnd);
+			//add null terminator to the string
+			sharedStr[i][countEnd] = 0;
+		}
+
+		//if the data has been skewed and is out of range, nullify it
+		else
+			sharedStr[i] = NULL;
+
+		//offset for the next data
+		sharedStrDataOffset += (16 + countEnd);
+		countEnd = 0;
+	}
+}
+
 bool XMLSharedString::Load()
 {
 	FILE* in = fopen("sharedStrings.XML", "rb");
 	if (in)
 	{
 		char numStr[8];
-		char* buffer;
 		fseek(in, 0, SEEK_END);
 		int fileSize = ftell(in);
 		fseek(in, 0, SEEK_SET);
-		buffer = new char[fileSize];//(char*)malloc(fileSize);
+
+		buffer = new char[fileSize];
 		fread(&buffer[0], fileSize, 1, in);
 
 		//find the number of strings in the XML file
@@ -24,38 +55,12 @@ bool XMLSharedString::Load()
 
 		//convert the string to num
 		memcpy(numStr, sharedStrDataOffset, countEnd);
-		numSharedStr = atoi(numStr);
+		numSharedStr = fast_atoi(numStr);
 		//the number of strings to load
-		sharedStr = new char*[numSharedStr];//(char**)malloc(numSharedStr);
+		sharedStr = new char*[numSharedStr];
 
-		//offset to the start of the shared string data
-		sharedStrDataOffset = strstr(buffer, "<si><t>") + 7;
-		countEnd = 0;
-		for (int i = 0; i < numSharedStr; i++)
-		{
-			//find the end of the shared string by finding the XML syntax '<'
-			while (sharedStrDataOffset[countEnd] != '<') {
-				countEnd++;
-				if (countEnd > XMLSHAREDSTRING_MAXLENGTH)
-					break;
-			}
-
-			//allocate the new string size and fill it up
-			if (countEnd < XMLSHAREDSTRING_MAXLENGTH) {
-				sharedStr[i] = new char[countEnd + 1];//(char*)malloc(countEnd+1);
-				memcpy(sharedStr[i], sharedStrDataOffset, countEnd);
-				//add null terminator to the string
-				sharedStr[i][countEnd] = 0;
-			}
-
-			//if the data has been skewed and is out of range, nullify it
-			else
-				sharedStr[i] = NULL;
-			
-			//offset for the next data
-			sharedStrDataOffset += (16 + countEnd);
-			countEnd = 0;
-		}
+		//single thread version
+		GetSharedStr(0, 0, numSharedStr);
 
 		delete buffer;//free(buffer);
 		fclose(in);
@@ -68,11 +73,11 @@ bool XMLSharedString::Load()
 void XMLSharedString::Destroy()
 {
 	for (int i = 0; i < numSharedStr; i++){
-		delete sharedStr[i];//free(sharedStr[i]);
+		delete sharedStr[i];
 	}
 }
 
-bool XMLWorksheet::Load(const char* fn)
+bool XMLWorksheet::Load(char* fn)
 {
 	FILE* in = fopen(fn, "rb");
 	if (in)
@@ -106,7 +111,9 @@ bool XMLWorksheet::Load(const char* fn)
 			isEmptyFlag = false;
 			//faster than reallocing every loop/allocating a big number then resizing at the end (excel data size is too variable)
 			int currCell = -1;
-			cells = new XMLWORKSHEET_CELL[numCells];//(XMLWORKSHEET_CELL*)malloc(sizeof(XMLWORKSHEET_CELL) * numCells);
+			cells = new XMLWORKSHEET_CELL[numCells];
+			//used for 'v' values
+			char numStr[XMLWORKSHEETCELL_MAXLENGTH];
 
 			//find the actual cell ID and value
 			bufferOffset = buffer;
@@ -118,7 +125,7 @@ bool XMLWorksheet::Load(const char* fn)
 			{
 				int dataEnd = 0;
 				//the column row data
-				if (bufferOffset[countEnd] == 'c' && bufferOffset[countEnd+1] == ' ' && bufferOffset[countEnd+2] == 'r')
+				if (bufferOffset[countEnd] == 'c' && bufferOffset[countEnd+2] == 'r')
 				{
 					//we now move onto the next cell as we've found some c/r data
 					currCell += 1;
@@ -134,7 +141,6 @@ bool XMLWorksheet::Load(const char* fn)
 					dataEnd -= 1;
 
 					//get the cell id and zero it off
-					cells[currCell].name = new char[dataEnd + 1];
 					memcpy(cells[currCell].name, &bufferOffset[countEnd], dataEnd);
 					cells[currCell].name[dataEnd] = 0;
 
@@ -146,15 +152,15 @@ bool XMLWorksheet::Load(const char* fn)
 					cells[currCell].value = -1;
 				}
 
-				else if (bufferOffset[countEnd] == 's' && bufferOffset[countEnd+1] == '=')
-				{
-					//offset to get to the data
-					//countEnd += 6;
+				else if (bufferOffset[countEnd] == 's' && bufferOffset[countEnd+1] == '='){
+					//offset to pass over this id (not needed)
+					countEnd += 6;
 				}
 
 				//whether the cell references a shared string
-				else if (bufferOffset[countEnd] == 't' && bufferOffset[countEnd+1] == '=')
-				{
+				else if (bufferOffset[countEnd] == 't' && bufferOffset[countEnd+1] == '='){
+					//offset to pass over this id (not needed)
+					countEnd += 5;
 					cells[currCell].strRefFlag = true;
 				}
 
@@ -169,10 +175,9 @@ bool XMLWorksheet::Load(const char* fn)
 						dataEnd++;
 					}
 
-					char numStr[XMLWORKSHEETCELL_MAXLENGTH];
 					memcpy(numStr, &bufferOffset[countEnd], dataEnd);
 					numStr[dataEnd] = 0;
-					cells[currCell].value = atoi(numStr);
+					cells[currCell].value = fast_atoi(numStr);
 
 					//skip over the data we've just processed
 					countEnd += dataEnd;
@@ -195,9 +200,5 @@ bool XMLWorksheet::Load(const char* fn)
 
 void XMLWorksheet::Destroy()
 {
-	for (int i = 0; i < numCells; i++){
-		delete cells[i].name;//free(cells[i].name);
-	}
-
 	delete[] cells;//free(cells);
 }

@@ -5,6 +5,8 @@
 #include <malloc.h>
 #include <string>
 
+#include "Fast.h"
+
 class XML
 {
 	public:
@@ -19,6 +21,8 @@ class XML
 #define XMLSHAREDSTRING_MAXLENGTH 32
 //the length of a worksheet cell value (normally floating point numbers/large strings get close to this max)
 #define XMLWORKSHEETCELL_MAXLENGTH 32
+//instead of using new/delete, use a max width of the name (limitation, but its a big number)
+#define XMLWORKSHEETCELL_NAMELENGTH 16
 
 class XMLSharedString : public XML
 {
@@ -26,6 +30,8 @@ class XMLSharedString : public XML
 		bool Load();
 		void Destroy();
 	private:
+		void GetSharedStr(int startOffset, int startIndex, int lastIndex);
+		char* buffer;
 		int numSharedStr;
 		char** sharedStr;
 };
@@ -35,7 +41,7 @@ typedef struct XMLWORKSHEET_CELL
 	//if the cell t="s" then it references a string constant via index
 	bool strRefFlag;
 	//e.g. "A1"
-	char* name;
+	char name[XMLWORKSHEETCELL_NAMELENGTH];
 	//index to constant string or actual value
 	int value; 
 } XMLWORKSHEET_CELL;
@@ -44,7 +50,7 @@ class XMLWorksheet : public XML
 {
 	public:
 		bool Load() { return false; }
-		bool Load(const char* fn);
+		bool Load(char* fn);
 		bool isEmpty() { return isEmptyFlag; }
 		int GetNumCells() { return numCells; }
 		void Destroy();

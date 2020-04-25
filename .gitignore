@@ -241,3 +241,4 @@ ModelManifest.xml
 # FAKE - F# Make
 .fake/
 /ExcelProj/whostat2005_mortality.xlsx
+/ExcelProj/dictionary.xlsx
