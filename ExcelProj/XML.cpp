@@ -55,6 +55,7 @@ bool XMLSharedString::Load()
 
 		//convert the string to num
 		memcpy(numStr, sharedStrDataOffset, countEnd);
+		numStr[countEnd] = 0;
 		numSharedStr = fast_atoi(numStr);
 		//the number of strings to load
 		sharedStr = new char*[numSharedStr];

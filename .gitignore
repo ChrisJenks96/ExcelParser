@@ -242,3 +242,5 @@ ModelManifest.xml
 .fake/
 /ExcelProj/whostat2005_mortality.xlsx
 /ExcelProj/dictionary.xlsx
+/ExcelProj/sheet1.xml
+/ExcelProj/sharedStrings.xml
