@@ -8,7 +8,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		this->numWorksheets = numWorksheets;
 		//we need to log and save the names of the worksheet names for loading them later
 		int currWorksheetName = 0;
-		worksheetNames = new char*[numWorksheets];
+		worksheetNames = new fixedWorksheetStr[numWorksheets];
 		int currWorksheet = -1;
 		bool xmlFound = false;
 
@@ -30,10 +30,10 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 		}
 
 		// Buffer to hold data read from the zip file.
-		char read_buffer[8192];
+		char read_buffer[XLSX_READBUFFER_LENGTH];
 		// Loop to extract all files
 		unsigned long i;
-		char filename[64];
+		char filename[XLSX_FILENAME_LENGTH];
 		for (i = 0; i < global_info.number_entry; ++i)
 		{
 			xmlFound = false;
@@ -42,7 +42,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 			//our custom filename accessor
 			char* actualFilenameOffset;
 			if (unzGetCurrentFileInfo(zipfile, &file_info, 
-				filename, 512, NULL, 0, NULL, 0) == UNZ_OK)
+				filename, XLSX_FILENAME_LENGTH, NULL, 0, NULL, 0) == UNZ_OK)
 			{
 				actualFilenameOffset = strstr(filename, "xl/sharedStrings.xml");
 				if (actualFilenameOffset != NULL){
@@ -71,9 +71,9 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 
 							//add the worksheet name to this class for the worksheet reader
 							len = strlen(actualFilenameOffset);
-							worksheetNames[currWorksheet] = new char[len + 1];
-							memcpy(worksheetNames[currWorksheet], actualFilenameOffset, len);
-							worksheetNames[currWorksheet][len] = 0;
+							//worksheetNames[currWorksheet] = new char[len + 1];
+							memcpy(worksheetNames[currWorksheet].data, actualFilenameOffset, len);
+							worksheetNames[currWorksheet].data[len] = 0;
 						}
 					}
 				}
@@ -106,7 +106,7 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 				int error = UNZ_OK;
 				do
 				{
-					error = unzReadCurrentFile(zipfile, read_buffer, 8192);
+					error = unzReadCurrentFile(zipfile, read_buffer, XLSX_READBUFFER_LENGTH);
 					if (error < 0){
 						printf("error %d\n", error);
 						unzCloseCurrentFile(zipfile);
@@ -144,7 +144,5 @@ bool XLSX::Load(const char* fn, int numWorksheets)
 
 void XLSX::Destroy()
 {
-	for (int i = 0; i < numWorksheets; i++){
-		delete worksheetNames[i];
-	}
+	delete[] worksheetNames;
 }

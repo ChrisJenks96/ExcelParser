@@ -17,12 +17,16 @@ class XML
 	private:
 };
 
-//the length of a string before we give up searching for it's end (probably doesn't have one...)
-#define XMLSHAREDSTRING_MAXLENGTH 32
+//the length of a string (normally quite small, but must cater for sentences etc..)
+#define XMLSHAREDSTRING_MAXLENGTH 128
 //the length of a worksheet cell value (normally floating point numbers/large strings get close to this max)
 #define XMLWORKSHEETCELL_MAXLENGTH 32
 //instead of using new/delete, use a max width of the name (limitation, but its a big number)
 #define XMLWORKSHEETCELL_NAMELENGTH 16
+
+typedef struct fixedSharedStr{
+	char data[XMLSHAREDSTRING_MAXLENGTH];
+} fixedSharedStr;
 
 class XMLSharedString : public XML
 {
@@ -33,7 +37,7 @@ class XMLSharedString : public XML
 		void GetSharedStr(int startOffset, int startIndex, int lastIndex);
 		char* buffer;
 		int numSharedStr;
-		char** sharedStr;
+		fixedSharedStr* sharedStr;
 };
 
 typedef struct XMLWORKSHEET_CELL

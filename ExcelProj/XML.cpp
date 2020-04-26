@@ -9,21 +9,12 @@ void XMLSharedString::GetSharedStr(int startOffset, int startIndex, int lastInde
 		//find the end of the shared string by finding the XML syntax '<'
 		while (sharedStrDataOffset[countEnd] != '<') {
 			countEnd++;
-			if (countEnd > XMLSHAREDSTRING_MAXLENGTH)
-				break;
 		}
 
-		//allocate the new string size and fill it up
-		if (countEnd < XMLSHAREDSTRING_MAXLENGTH) {
-			sharedStr[i] = new char[countEnd + 1];
-			memcpy(sharedStr[i], sharedStrDataOffset, countEnd);
-			//add null terminator to the string
-			sharedStr[i][countEnd] = 0;
-		}
-
-		//if the data has been skewed and is out of range, nullify it
-		else
-			sharedStr[i] = NULL;
+		//sharedStr[i] = new char[countEnd + 1];
+		memcpy(sharedStr[i].data, sharedStrDataOffset, countEnd);
+		//add null terminator to the string
+		sharedStr[i].data[countEnd] = 0;
 
 		//offset for the next data
 		sharedStrDataOffset += (16 + countEnd);
@@ -58,12 +49,12 @@ bool XMLSharedString::Load()
 		numStr[countEnd] = 0;
 		numSharedStr = fast_atoi(numStr);
 		//the number of strings to load
-		sharedStr = new char*[numSharedStr];
+		sharedStr = new fixedSharedStr[numSharedStr];
 
 		//single thread version
 		GetSharedStr(0, 0, numSharedStr);
 
-		delete buffer;//free(buffer);
+		delete buffer;
 		fclose(in);
 		return true;
 	}
@@ -73,9 +64,7 @@ bool XMLSharedString::Load()
 
 void XMLSharedString::Destroy()
 {
-	for (int i = 0; i < numSharedStr; i++){
-		delete sharedStr[i];
-	}
+	delete[] sharedStr;
 }
 
 bool XMLWorksheet::Load(char* fn)

@@ -18,8 +18,6 @@ int main(int argc, char** argv)
 	//once the xlsx reader has uncompressed all the files, they will be on the root, so we know the file loc
 	if (xlsxReader.Load("dictionary.xlsx", numWorksheets))
 	{
-		//ONLY LOG THE SHARED STRING PROCESS... CONVERTING TO A MULTITHREADED PROGRAM!!!!!!!!
-
 		xmlSSReader.Load();
 		for (int i = 0; i < numWorksheets; i++) {
 			xmlWSReader[i].Load(xlsxReader.GetWorksheetName(i));

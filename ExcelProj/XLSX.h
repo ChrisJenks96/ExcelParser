@@ -40,6 +40,15 @@ typedef struct XLSX_DATA
 } XLSX_DATA;
 #pragma pack(pop)
 
+//This number needs to be big enough to reduce the amount of times we call fwrite (slow)
+#define XLSX_READBUFFER_LENGTH 8192
+#define XLSX_FILENAME_LENGTH 32//64
+#define XLSX_WORKSHEETNAME_LENGTH 32
+
+typedef struct fixedWorksheetStr {
+	char data[XLSX_WORKSHEETNAME_LENGTH];
+} fixedWorksheetStr;
+
 class XLSX
 {
 	public:
@@ -47,11 +56,11 @@ class XLSX
 		bool Load(const char* fn, int numWorksheets);
 		void Destroy();
 		int GetNumberWorksheets() { return numWorksheets; }
-		char* GetWorksheetName(int id) { return worksheetNames[id]; }
+		char* GetWorksheetName(int id) { return worksheetNames[id].data; }
 		~XLSX() {}
 	private:
 		int numWorksheets;
-		char** worksheetNames;
+		fixedWorksheetStr* worksheetNames;
 };
 
 #endif
