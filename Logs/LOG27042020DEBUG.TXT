@@ -1,0 +1,14 @@
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 2547.106800 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3214.791200 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3182.309600 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3122.806300 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3091.149800 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3139.504400 Milliseconds
+Worksheet[0]: Cell count: 2197342
+Excel Spreadsheet processing time: 3239.521100 Milliseconds

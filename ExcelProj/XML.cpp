@@ -2,23 +2,19 @@
 
 void XMLSharedString::GetSharedStr(int startOffset, int startIndex, int lastIndex)
 {
-	int countEnd = 0;
+	uint8_t dataEnd = 0;
 	char* sharedStrDataOffset = strstr(&buffer[startOffset], "<si><t>") + 7;
 	for (int i = startIndex; i < lastIndex; i++)
 	{
 		//find the end of the shared string by finding the XML syntax '<'
-		while (sharedStrDataOffset[countEnd] != '<') {
-			countEnd++;
+		while (*sharedStrDataOffset != '<') {
+			sharedStr[i].data[dataEnd++] = *sharedStrDataOffset++;
 		}
 
-		//sharedStr[i] = new char[countEnd + 1];
-		memcpy(sharedStr[i].data, sharedStrDataOffset, countEnd);
-		//add null terminator to the string
-		sharedStr[i].data[countEnd] = 0;
-
+		sharedStr[i].data[dataEnd] = 0;
 		//offset for the next data
-		sharedStrDataOffset += (16 + countEnd);
-		countEnd = 0;
+		sharedStrDataOffset += 16;
+		dataEnd = 0;
 	}
 }
 
@@ -38,22 +34,19 @@ bool XMLSharedString::Load()
 		//find the number of strings in the XML file
 		//+13 is the offset to get to the start of the number
 		char* sharedStrDataOffset = strstr(buffer, "uniqueCount=") + 13;
-		int countEnd = 0;
 		//find the remaining quotation and that will be our offset
-		while (sharedStrDataOffset[countEnd] != '"'){
-			countEnd++;
+		uint8_t dataEnd = 0;
+		while (*sharedStrDataOffset != '"'){
+			numStr[dataEnd++] = *sharedStrDataOffset++;
 		}
 
 		//convert the string to num
-		memcpy(numStr, sharedStrDataOffset, countEnd);
-		numStr[countEnd] = 0;
+		numStr[dataEnd] = 0;
 		numSharedStr = fast_atoi(numStr);
 		//the number of strings to load
 		sharedStr = new fixedSharedStr[numSharedStr];
-
 		//single thread version
 		GetSharedStr(0, 0, numSharedStr);
-
 		delete buffer;
 		fclose(in);
 		return true;
@@ -106,74 +99,69 @@ bool XMLWorksheet::Load(char* fn)
 			char numStr[XMLWORKSHEETCELL_MAXLENGTH];
 
 			//find the actual cell ID and value
-			bufferOffset = buffer;
-			int countEnd = 0;
-			
+			bufferOffset = buffer;			
 			bufferOffset = strstr(bufferOffset, "c r");
 			//while we havent hit the next column row data segment, process this current one
-			while (currCell != (numCells-1))
+			uint8_t dataEnd = 0;
+			while (bufferOffset != NULL)
 			{
-				int dataEnd = 0;
 				//the column row data
-				if (bufferOffset[countEnd] == 'c' && bufferOffset[countEnd+2] == 'r')
+				//if (bufferOffset[countEnd] == 'c' && bufferOffset[countEnd+2] == 'r')
+				if (*bufferOffset == 'c' && *(bufferOffset+2) == 'r')
 				{
+					dataEnd = 0;
 					//we now move onto the next cell as we've found some c/r data
 					currCell += 1;
 					//offset to get to the data
-					countEnd += 5;
-					//NOTE: quotation marks arent being picked up4
-					//find the next ' ' / greater than for the end of the data
-					while (bufferOffset[countEnd + dataEnd] != ' ' && bufferOffset[countEnd + dataEnd] != '>') {
-						dataEnd++;
+					bufferOffset += 5;//countEnd += 5;
+					//get the cell id and zero it off
+					while ((*bufferOffset) != 34){
+						cells[currCell].name[dataEnd++] = *bufferOffset++;
 					}
 
-					//remove extra formatting after the data
-					dataEnd -= 1;
-
-					//get the cell id and zero it off
-					memcpy(cells[currCell].name, &bufferOffset[countEnd], dataEnd);
 					cells[currCell].name[dataEnd] = 0;
-
-					//skip over the data we've just processed
-					countEnd += dataEnd;
-
 					//set this by default, as when we hit 't'/'v' we set it to true
 					cells[currCell].strRefFlag = false;
-					cells[currCell].value = -1;
+					cells[currCell].value = -1;			
+					bufferOffset++;
 				}
 
-				else if (bufferOffset[countEnd] == 's' && bufferOffset[countEnd+1] == '='){
+				else if (*bufferOffset == 's' && *(bufferOffset+1) == '='){
 					//offset to pass over this id (not needed)
-					countEnd += 6;
+					bufferOffset += 6;
 				}
 
 				//whether the cell references a shared string
-				else if (bufferOffset[countEnd] == 't' && bufferOffset[countEnd+1] == '='){
+				else if (*bufferOffset == 't' && *(bufferOffset+1) == '=')
+				{
 					//offset to pass over this id (not needed)
-					countEnd += 5;
+					bufferOffset += 5;
 					cells[currCell].strRefFlag = true;
 				}
 
 				//the cell value
-				else if (bufferOffset[countEnd] == '<' && bufferOffset[countEnd+1] == 'v' && bufferOffset[countEnd+2] == '>')
+				else if (*bufferOffset == '<' && *(bufferOffset+1) == 'v' && *(bufferOffset+2) == '>')
 				{
+					dataEnd = 0;
 					//offset to get to the data
-					countEnd += 3;
+					bufferOffset += 3;
 
-					//find the end of the cell value
-					while (bufferOffset[countEnd + dataEnd] != '<') {
-						dataEnd++;
+					while ((*bufferOffset) != '<') {
+						numStr[dataEnd++] = *bufferOffset++;
 					}
 
-					memcpy(numStr, &bufferOffset[countEnd], dataEnd);
 					numStr[dataEnd] = 0;
 					cells[currCell].value = fast_atoi(numStr);
 
 					//skip over the data we've just processed
-					countEnd += dataEnd;
+					bufferOffset += (7 + dataEnd);
 				}
 
-				countEnd++;
+				//we shouldnt hit this... means there is extra formatting, we just move to the next round of data
+				else
+					bufferOffset = strstr(bufferOffset, "c r") - 1;
+
+				bufferOffset++;
 			}
 		}
 
